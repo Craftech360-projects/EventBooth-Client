@@ -146,25 +146,24 @@ const Events = () => {
     try {
       setLoading(true);
 
-      // Generate a random secret using browser's crypto API
+      // Generate a base32 encoded secret
       const array = new Uint8Array(20);
       crypto.getRandomValues(array);
-      const secret = Array.from(array, (byte) =>
-        byte.toString(16).padStart(2, "0")
-      ).join("");
-
-      // Create Timestamp directly from Date objects
-      const startTimestamp = Timestamp.fromDate(formData.startDateTime);
-      const endTimestamp = Timestamp.fromDate(formData.endDateTime);
+      const base32Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+      let secret = "";
+      for (let i = 0; i < array.length; i++) {
+        secret += base32Chars[array[i] % 32];
+      }
 
       // Create event document
       const eventData = {
         ...formData,
-        startDateTime: startTimestamp,
-        endDateTime: endTimestamp,
+        startDateTime: Timestamp.fromDate(formData.startDateTime),
+        endDateTime: Timestamp.fromDate(formData.endDateTime),
         userId: currentUser.uid,
         createdAt: Timestamp.now(),
-        secret: secret, // Use the browser-generated secret
+        secret: secret,
+        eventId: generateEventId(), // Add a unique event ID
       };
 
       const docRef = await addDoc(collection(db, "events"), eventData);
@@ -189,6 +188,13 @@ const Events = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const generateEventId = () => {
+    return (
+      Math.random().toString(36).substring(2, 15) +
+      Math.random().toString(36).substring(2, 15)
+    );
   };
 
   // Update handleDateChange to work with Date objects
@@ -224,7 +230,10 @@ const Events = () => {
 
       // Generate initial code
       const generateCode = async () => {
+        // Use the same timestamp calculation as the test app
         const timestamp = Math.floor(Date.now() / 30000);
+        console.log("Current timestamp:", timestamp); // Add this for debugging
+
         const timestampBytes = new TextEncoder().encode(timestamp.toString());
         const signature = await crypto.subtle.sign(
           "HMAC",
@@ -235,22 +244,19 @@ const Events = () => {
         const code = Math.abs(dataView.getInt32(0) % 1000000)
           .toString()
           .padStart(6, "0");
+        console.log("Generated code:", code); // Add this for debugging
         setAuthCode(code);
-        setCountdown(30); // Reset countdown when code refreshes
+        setCountdown(30);
       };
 
-      // Generate initial code
+      // Generate initial code and set up timers
       await generateCode();
-
-      // Set up timer to refresh code every 30 seconds
       const codeTimer = setInterval(generateCode, 30000);
-      
-      // Set up countdown timer
       const countdownTimer = setInterval(() => {
         setCountdown((prev) => (prev > 0 ? prev - 1 : 30));
       }, 1000);
 
-      // Clear both timers when modal is closed
+      // Return cleanup function
       return () => {
         clearInterval(codeTimer);
         clearInterval(countdownTimer);
@@ -521,6 +527,10 @@ const Events = () => {
           </Typography>
           <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
             Code refreshes in {countdown} seconds
+          </Typography>
+
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Event ID: {selectedEvent?.eventId}
           </Typography>
 
           <Box
