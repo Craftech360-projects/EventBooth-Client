@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useLocation } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+import LicenseCertificate from "../components/LicenseCertificate";
 
 import {
   Box,
@@ -49,6 +50,7 @@ import { format } from "date-fns";
 const Events = () => {
   const { currentUser } = useAuth();
   const location = useLocation();
+  const [openLicenseModal, setOpenLicenseModal] = useState(false);
   const [events, setEvents] = useState([]);
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -124,6 +126,11 @@ const Events = () => {
       default:
         return events;
     }
+  };
+
+  const handleGenerateLicense = (event) => {
+    setSelectedEvent(event);
+    setOpenLicenseModal(true);
   };
 
   // Get filtered events based on current tab
@@ -376,6 +383,15 @@ const Events = () => {
                     >
                       Get Auth Code
                     </Button>
+                    &nbsp;
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      color="secondary"
+                      onClick={() => handleGenerateLicense(event)}
+                    >
+                      License
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
@@ -500,6 +516,21 @@ const Events = () => {
             Create Event
           </Button>
         </DialogActions>
+      </Dialog>
+
+      {/* Add this dialog for license certificate */}
+      <Dialog
+        open={openLicenseModal}
+        onClose={() => setOpenLicenseModal(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogContent>
+          <LicenseCertificate
+            event={selectedEvent}
+            onClose={() => setOpenLicenseModal(false)}
+          />
+        </DialogContent>
       </Dialog>
 
       {/* Authentication Code Modal */}
