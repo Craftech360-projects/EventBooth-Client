@@ -9,6 +9,7 @@ import {
   Card,
   CardContent,
   CardActions,
+  Alert,
 } from "@mui/material";
 import { useNavigate } from "react-router-dom";
 
@@ -50,29 +51,40 @@ const Dashboard = () => {
         </Typography>
       </Box>
 
+      {!currentUser?.hasPurchasedPlan && (
+        <Alert 
+          severity="info" 
+          sx={{ mb: 4 }}
+          action={
+            <Button 
+              color="inherit" 
+              size="small" 
+              onClick={() => navigate("/payments")}
+            >
+              View Plans
+            </Button>
+          }
+        >
+          Checkout our plans to Get Started
+        </Alert>
+      )}
+
       <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={12} sm={6} md={4}>
           <StatCard
-            title="Total Requests"
-            value={currentUser?.totalRequests || 60}
+            title="Available Requests"
+            value={currentUser?.totalRequests || 0}
             color="primary.main"
           />
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={12} sm={6} md={4}>
           <StatCard
             title="Used Requests"
             value={currentUser?.usedRequests || 0}
             color="secondary.main"
           />
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <StatCard
-            title="Pending Requests"
-            value={currentUser?.pendingRequests || 0}
-            color="warning.main"
-          />
-        </Grid>
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid item xs={12} sm={6} md={4}>
           <StatCard
             title="Total Events"
             value={currentUser?.totalEvents || 0}
@@ -119,12 +131,19 @@ const Dashboard = () => {
                 Subscription
               </Typography>
               <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-                Your current subscription includes 60 service requests for $10.
+                {currentUser?.hasPurchasedPlan 
+                  ? `Your current plan includes ${currentUser?.totalRequests} service requests.`
+                  : "Purchase a plan to get started with service requests."}
               </Typography>
             </CardContent>
             <CardActions>
-              <Button size="small" variant="contained" color="secondary">
-                Upgrade Subscription
+              <Button 
+                size="small" 
+                variant="contained" 
+                color="secondary"
+                onClick={() => navigate("/payments")}
+              >
+                {currentUser?.hasPurchasedPlan ? "Upgrade Plan" : "Checkout Our Plans"}
               </Button>
             </CardActions>
           </Card>

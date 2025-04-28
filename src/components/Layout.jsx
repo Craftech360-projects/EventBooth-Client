@@ -24,11 +24,12 @@ import MenuIcon from "@mui/icons-material/Menu";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import EventIcon from "@mui/icons-material/Event";
 import PersonIcon from "@mui/icons-material/Person";
+import PaymentIcon from "@mui/icons-material/Payment";
 import LogoutIcon from "@mui/icons-material/Logout";
 
 const drawerWidth = 240;
 
-const Layout = () => {
+const Layout = ({ children }) => {
   const { currentUser, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -66,7 +67,7 @@ const Layout = () => {
       <Divider />
       <List>
         <ListItem
-          component="div"
+          button
           onClick={() => navigate("/")}
           selected={location.pathname === "/"}
         >
@@ -76,7 +77,7 @@ const Layout = () => {
           <ListItemText primary="Dashboard" />
         </ListItem>
         <ListItem
-          component="div"
+          button
           onClick={() => navigate("/events")}
           selected={location.pathname === "/events"}
         >
@@ -86,7 +87,17 @@ const Layout = () => {
           <ListItemText primary="Events" />
         </ListItem>
         <ListItem
-          component="div"
+          button
+          onClick={() => navigate("/payments")}
+          selected={location.pathname === "/payments"}
+        >
+          <ListItemIcon>
+            <PaymentIcon />
+          </ListItemIcon>
+          <ListItemText primary="Plans" />
+        </ListItem>
+        <ListItem
+          button
           onClick={() => navigate("/profile")}
           selected={location.pathname === "/profile"}
         >
@@ -98,7 +109,7 @@ const Layout = () => {
       </List>
       <Divider />
       <List>
-        <ListItem component="div" onClick={handleLogout}>
+        <ListItem button onClick={handleLogout}>
           <ListItemIcon>
             <LogoutIcon />
           </ListItemIcon>

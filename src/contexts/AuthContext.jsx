@@ -34,10 +34,11 @@ export const AuthProvider = ({ children }) => {
           email: user.email,
           displayName: user.displayName,
           photoURL: user.photoURL,
-          totalRequests: 60,
+          totalRequests: 0,
           usedRequests: 0,
           pendingRequests: 0,
           totalEvents: 0,
+          hasPurchasedPlan: false,
           createdAt: new Date(),
         });
       }
