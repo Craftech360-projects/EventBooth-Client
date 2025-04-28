@@ -379,6 +379,7 @@ const Events = () => {
                     <Button
                       variant="outlined"
                       size="small"
+                      // sx={{ mb: 1 }}
                       onClick={() => handleGetAuthCode(event)}
                     >
                       Get Auth Code
