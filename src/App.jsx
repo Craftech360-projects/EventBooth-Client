@@ -6,6 +6,7 @@ import Layout from "./components/Layout";
 import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
 import Events from "./pages/Events";
+import EventDetails from "./pages/EventDetails";
 import Profile from "./pages/Profile";
 import Payments from "./pages/Payments";
 
@@ -31,6 +32,16 @@ function App() {
               <PrivateRoute>
                 <Layout>
                   <Events />
+                </Layout>
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/events/:eventId"
+            element={
+              <PrivateRoute>
+                <Layout>
+                  <EventDetails />
                 </Layout>
               </PrivateRoute>
             }

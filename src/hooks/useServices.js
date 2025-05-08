@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
-import { collection, getDocs } from "firebase/firestore";
-import { db } from "../firebase/config";
+import apiService from "../services/apiService";
 
-export const useServices = () => {
+const useServices = () => {
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -11,16 +10,12 @@ export const useServices = () => {
     const fetchServices = async () => {
       try {
         setLoading(true);
-        const servicesCollection = collection(db, "services");
-        const servicesSnapshot = await getDocs(servicesCollection);
-        const servicesData = servicesSnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-        setServices(servicesData);
-      } catch (err) {
-        console.error("Error fetching services:", err);
-        setError("Failed to load services. Please try again later.");
+        const { data } = await apiService.serviceRequests.getServices();
+        setServices(data.data || []); // Access the data property of the response
+      } catch (error) {
+        console.error("Error fetching services:", error);
+        setError("Failed to load services");
+        setServices([]); // Set empty array on error
       } finally {
         setLoading(false);
       }
@@ -29,9 +24,7 @@ export const useServices = () => {
     fetchServices();
   }, []);
 
-  return {
-    services,
-    loading,
-    error,
-  };
+  return { services, loading, error };
 };
+
+export default useServices;

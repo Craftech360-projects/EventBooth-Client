@@ -67,6 +67,7 @@ const Layout = ({ children }) => {
       <Divider />
       <List>
         <ListItem
+          sx={{ cursor: "pointer" }}
           button="true"
           onClick={() => navigate("/")}
           selected={location.pathname === "/"}
@@ -77,6 +78,7 @@ const Layout = ({ children }) => {
           <ListItemText primary="Dashboard" />
         </ListItem>
         <ListItem
+          sx={{ cursor: "pointer" }}
           button="true"
           onClick={() => navigate("/events")}
           selected={location.pathname === "/events"}
@@ -87,6 +89,7 @@ const Layout = ({ children }) => {
           <ListItemText primary="Events" />
         </ListItem>
         <ListItem
+          sx={{ cursor: "pointer" }}
           button="true"
           onClick={() => navigate("/payments")}
           selected={location.pathname === "/payments"}
@@ -97,6 +100,7 @@ const Layout = ({ children }) => {
           <ListItemText primary="Plans" />
         </ListItem>
         <ListItem
+          sx={{ cursor: "pointer" }}
           button="true"
           onClick={() => navigate("/profile")}
           selected={location.pathname === "/profile"}
@@ -109,7 +113,11 @@ const Layout = ({ children }) => {
       </List>
       <Divider />
       <List>
-        <ListItem button="true" onClick={handleLogout}>
+        <ListItem
+          sx={{ cursor: "pointer" }}
+          button="true"
+          onClick={handleLogout}
+        >
           <ListItemIcon>
             <LogoutIcon />
           </ListItemIcon>
@@ -224,8 +232,8 @@ const Layout = ({ children }) => {
         sx={{
           flexGrow: 1,
           p: 3,
-          width: { sm: `calc(100% - ${drawerWidth}px)` },
-          ml: { sm: `${drawerWidth}px` },
+          width: { xs: "100%", sm: `calc(100% - ${drawerWidth}px)` },
+          ml: { xs: 0, sm: `${drawerWidth}px` },
           mt: "64px", // Add top margin to account for AppBar height
         }}
       >

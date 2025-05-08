@@ -14,7 +14,12 @@ import {
   CircularProgress,
   Alert,
   Snackbar,
+  Container,
+  Paper,
+  Divider,
+  Stack,
 } from "@mui/material";
+import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 
 const plans = [
   {
@@ -76,10 +81,11 @@ const Payments = () => {
 
       // Initialize Razorpay payment
       const options = {
-        key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+        key: data.key_id,
+        // import.meta.env.VITE_RAZORPAY_KEY_ID,
         amount: data.amount, // amount from the server
         currency: data.currency,
-        name: "Event Booth",
+        name: "Event Booth - Photobooth",
         description: `${plan.name} Plan Subscription`,
         order_id: data.orderId,
         handler: function (response) {
@@ -132,13 +138,23 @@ const Payments = () => {
   };
 
   return (
-    <Box>
-      <Typography variant="h4" component="h1" gutterBottom>
-        Subscription Plans
-      </Typography>
-      <Typography variant="body1" paragraph>
-        Choose a plan that suits your needs
-      </Typography>
+    <Container maxWidth="lg" sx={{ py: 4 }}>
+      <Paper
+        elevation={0}
+        sx={{ p: 3, mb: 4, borderRadius: 2, textAlign: "center" }}
+      >
+        <Typography variant="h4" component="h1" gutterBottom fontWeight="bold">
+          Choose Your Subscription Plan
+        </Typography>
+        <Typography
+          variant="body1"
+          color="text.secondary"
+          sx={{ maxWidth: 600, mx: "auto" }}
+        >
+          Select a plan that best fits your needs and get started with our
+          premium services
+        </Typography>
+      </Paper>
 
       {loading && (
         <Box display="flex" justifyContent="center" my={4}>
@@ -146,9 +162,9 @@ const Payments = () => {
         </Box>
       )}
 
-      <Grid container spacing={3} sx={{ mt: 2 }}>
+      <Grid container spacing={4} sx={{ mt: 2 }} justifyContent="center">
         {plans.map((plan) => (
-          <Grid item xs={12} md={4} key={plan.id}>
+          <Grid item xs={12} sm={6} md={4} key={plan.id}>
             <Card
               elevation={4}
               sx={{
@@ -156,28 +172,49 @@ const Payments = () => {
                 display: "flex",
                 flexDirection: "column",
                 position: "relative",
-                transition: "transform 0.3s ease",
+                transition: "all 0.3s ease",
+                borderRadius: 3,
+                overflow: "visible",
                 "&:hover": {
-                  transform: "translateY(-5px)",
+                  transform: "translateY(-8px)",
+                  boxShadow: 8,
                 },
                 ...(plan.id === "gold" && {
                   border: "2px solid #FFD700",
+                  transform: "scale(1.05)",
+                  zIndex: 1,
+                  "&:hover": {
+                    transform: "translateY(-8px) scale(1.05)",
+                    boxShadow: 8,
+                  },
                 }),
               }}
             >
               {plan.id === "gold" && (
                 <Chip
-                  label="Best Value"
+                  label="BEST VALUE"
                   color="primary"
                   sx={{
                     position: "absolute",
-                    top: -12,
-                    right: 20,
+                    top: -15,
+                    left: "50%",
+                    transform: "translateX(-50%)",
                     fontWeight: "bold",
+                    px: 2,
+                    py: 0.5,
                   }}
                 />
               )}
-              <CardContent sx={{ flexGrow: 1 }}>
+              <Box
+                sx={{
+                  bgcolor: plan.id === "gold" ? "#FFF8E1" : "#f8f9fa",
+                  pt: 4,
+                  pb: 2,
+                  borderTopLeftRadius: 12,
+                  borderTopRightRadius: 12,
+                  textAlign: "center",
+                }}
+              >
                 <Typography
                   variant="h5"
                   component="h2"
@@ -185,35 +222,70 @@ const Payments = () => {
                   sx={{
                     color: plan.color,
                     fontWeight: "bold",
+                    letterSpacing: 1,
                   }}
                 >
-                  {plan.name}
+                  {plan.name.toUpperCase()}
                 </Typography>
-                <Typography variant="h4" component="div" gutterBottom>
+                <Typography
+                  variant="h3"
+                  component="div"
+                  fontWeight="bold"
+                  sx={{ mb: 1 }}
+                >
                   ₹{plan.price}
                 </Typography>
-                <Box sx={{ mt: 2 }}>
+                <Typography
+                  variant="body2"
+                  color="text.secondary"
+                  sx={{ mb: 2 }}
+                >
+                  One-time payment
+                </Typography>
+              </Box>
+
+              <Divider />
+
+              <CardContent sx={{ flexGrow: 1, px: 3, py: 3 }}>
+                <Stack spacing={2}>
                   {plan.features.map((feature, index) => (
-                    <Typography
+                    <Box
                       key={index}
-                      variant="body2"
-                      color="text.secondary"
-                      sx={{ mb: 1 }}
+                      sx={{ display: "flex", alignItems: "center" }}
                     >
-                      • {feature}
-                    </Typography>
+                      <CheckCircleOutlineIcon
+                        sx={{ mr: 1, color: "success.main" }}
+                        fontSize="small"
+                      />
+                      <Typography variant="body2" color="text.primary">
+                        {feature}
+                      </Typography>
+                    </Box>
                   ))}
-                </Box>
+                </Stack>
               </CardContent>
-              <CardActions>
+
+              <CardActions sx={{ p: 3, pt: 0 }}>
                 <Button
                   fullWidth
                   variant="contained"
-                  color="primary"
+                  color={plan.id === "gold" ? "primary" : "secondary"}
                   onClick={() => handlePayment(plan)}
                   disabled={loading}
+                  size="large"
+                  sx={{
+                    py: 1.5,
+                    borderRadius: 2,
+                    fontWeight: "bold",
+                    ...(plan.id === "gold" && {
+                      bgcolor: "primary.main",
+                      "&:hover": {
+                        bgcolor: "primary.dark",
+                      },
+                    }),
+                  }}
                 >
-                  Subscribe Now
+                  {plan.id === "gold" ? "Get Started" : "Subscribe Now"}
                 </Button>
               </CardActions>
             </Card>
@@ -221,12 +293,26 @@ const Payments = () => {
         ))}
       </Grid>
 
+      <Box sx={{ mt: 6, textAlign: "center" }}>
+        <Typography variant="body2" color="text.secondary">
+          All plans include access to our core features. Need a custom plan?{" "}
+          <Button color="primary" sx={{ textTransform: "none" }}>
+            Contact us
+          </Button>
+        </Typography>
+      </Box>
+
       <Snackbar
         open={success}
         autoHideDuration={6000}
         onClose={() => setSuccess(false)}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
       >
-        <Alert severity="success" onClose={() => setSuccess(false)}>
+        <Alert
+          severity="success"
+          onClose={() => setSuccess(false)}
+          sx={{ width: "100%" }}
+        >
           Payment successful! Your plan has been activated.
         </Alert>
       </Snackbar>
@@ -235,12 +321,17 @@ const Payments = () => {
         open={!!error}
         autoHideDuration={6000}
         onClose={() => setError("")}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
       >
-        <Alert severity="error" onClose={() => setError("")}>
+        <Alert
+          severity="error"
+          onClose={() => setError("")}
+          sx={{ width: "100%" }}
+        >
           {error}
         </Alert>
       </Snackbar>
-    </Box>
+    </Container>
   );
 };
 

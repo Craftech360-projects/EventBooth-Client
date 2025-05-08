@@ -3,7 +3,8 @@ import { auth } from "../firebase/config";
 
 // Create axios instance with default config
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || "http://localhost:3000/api",
+  baseURL: "http://localhost:2321/api",
+  withCredentials: true,
   headers: {
     "Content-Type": "application/json",
   },
@@ -90,6 +91,15 @@ const apiService = {
     generate: (eventId, expirationDate) =>
       api.post("/licenses/generate", { eventId, expirationDate }),
     verify: (licenseKey) => api.post("/licenses/verify", { licenseKey }),
+  },
+
+  // Service requests related endpoints
+  serviceRequests: {
+    getServices: () => api.get("/services"),
+    getByEventId: (eventId) => api.get(`/service-requests/event/${eventId}`),
+    create: (data) => api.post("/service-requests", data),
+    update: (id, data) => api.put(`/service-requests/${id}`, data),
+    delete: (id) => api.delete(`/service-requests/${id}`),
   },
 };
 
