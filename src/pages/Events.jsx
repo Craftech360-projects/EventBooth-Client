@@ -24,9 +24,8 @@ import {
   Tab,
   Tabs,
   CircularProgress,
+  Alert,
 } from "@mui/material";
-
-import { format } from "date-fns";
 
 const Events = () => {
   const { currentUser } = useAuth();
@@ -37,6 +36,9 @@ const Events = () => {
   const [formData, setFormData] = useState({
     name: "",
   });
+
+  // Check if user has an active plan
+  const hasActivePlan = currentUser?.hasPurchasedPlan || false;
 
   const parseDate = (dateString) => {
     if (!dateString) return new Date();
@@ -98,20 +100,41 @@ const Events = () => {
     navigate(`/events/${eventId}`);
   };
 
+  const handleSubscriptionClick = () => {
+    navigate("/payments");
+  };
+
   return (
     <Box>
       <Box sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}>
         <Typography variant="h4" component="h1">
           Events
         </Typography>
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={() => setOpenCreateModal(true)}
-        >
-          Create Event
-        </Button>
+        {hasActivePlan ? (
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={() => setOpenCreateModal(true)}
+          >
+            Create Event
+          </Button>
+        ) : (
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handleSubscriptionClick}
+          >
+            Get Subscription
+          </Button>
+        )}
       </Box>
+
+      {!hasActivePlan && (
+        <Alert severity="info" sx={{ mb: 3 }}>
+          You need an active subscription plan to create events. Please purchase
+          a subscription to continue.
+        </Alert>
+      )}
 
       <Paper sx={{ mb: 3 }}>
         <Tabs

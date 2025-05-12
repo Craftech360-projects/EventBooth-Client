@@ -86,20 +86,35 @@ const apiService = {
     updateProfile: (data) => api.put("/users/profile", data),
   },
 
+  services: {
+    getAll: () => api.get("/services"),
+  },
+
   // License related endpoints
   licenses: {
-    generate: (eventId, expirationDate) =>
-      api.post("/licenses/generate", { eventId, expirationDate }),
+    generate: (serviceId, deviceId, startDateTime, endDateTime) =>
+      api.post("/licenses/generate", {
+        serviceId,
+        deviceId,
+        startDateTime,
+        endDateTime,
+      }),
     verify: (licenseKey) => api.post("/licenses/verify", { licenseKey }),
   },
 
   // Service requests related endpoints
   serviceRequests: {
-    getServices: () => api.get("/services"),
-    getByEventId: (eventId) => api.get(`/service-requests/event/${eventId}`),
-    create: (data) => api.post("/service-requests", data),
-    update: (id, data) => api.put(`/service-requests/${id}`, data),
-    delete: (id) => api.delete(`/service-requests/${id}`),
+    getAll: () => api.get("/services"),
+    getByEventId: (eventId) => api.get(`/services/requests/event/${eventId}`),
+    create: (data) => api.post("/services/requests", data),
+    generateAuthCode: (serviceId) =>
+      api.get(`/service-requests/${serviceId}/auth-code`),
+    generateLicense: (serviceId, deviceId, startDateTime, endDateTime) =>
+      api.post(`/service-requests/${serviceId}/license`, {
+        deviceId,
+        startDateTime,
+        endDateTime,
+      }),
   },
 };
 

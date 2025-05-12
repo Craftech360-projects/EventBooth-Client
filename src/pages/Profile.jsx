@@ -13,11 +13,14 @@ import {
   Alert,
   Snackbar,
   CircularProgress,
+  Chip,
 } from "@mui/material";
+import { useNavigate } from "react-router-dom";
 
 const Profile = () => {
   const { currentUser } = useAuth();
   const { updateProfile, loading, error: profileError } = useProfile();
+  const navigate = useNavigate();
   const [formData, setFormData] = useState({
     displayName: currentUser?.displayName || "",
     email: currentUser?.email || "",
@@ -25,6 +28,43 @@ const Profile = () => {
   });
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
+
+  // Get plan details based on user's plan ID
+  const getPlanDetails = (planId) => {
+    const plans = {
+      silver: {
+        name: "Silver",
+        price: 299,
+        requests: 60,
+        validity: "30-day",
+      },
+      gold: {
+        name: "Gold",
+        price: 499,
+        requests: 80,
+        validity: "60-day",
+      },
+      platinum: {
+        name: "Platinum",
+        price: 699,
+        requests: 100,
+        validity: "90-day",
+      },
+    };
+
+    return (
+      plans[planId] || {
+        name: "No Plan",
+        price: 0,
+        requests: 0,
+        validity: "N/A",
+      }
+    );
+  };
+
+  const planId = currentUser?.planId || "silver";
+  const planDetails = getPlanDetails(planId);
+  const hasActivePlan = currentUser?.hasPurchasedPlan || false;
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -47,6 +87,10 @@ const Profile = () => {
     } catch (error) {
       setError("Failed to update profile. Please try again later.");
     }
+  };
+
+  const handleUpgradeClick = () => {
+    navigate("/payments");
   };
 
   return (
@@ -124,13 +168,22 @@ const Profile = () => {
         <Typography variant="h6" gutterBottom>
           Subscription Details
         </Typography>
+        {hasActivePlan ? (
+          <Box sx={{ mb: 2 }}>
+            <Chip label="Active Subscription" color="success" sx={{ mb: 2 }} />
+          </Box>
+        ) : (
+          <Box sx={{ mb: 2 }}>
+            <Chip label="No Active Subscription" color="error" sx={{ mb: 2 }} />
+          </Box>
+        )}
         <Grid container spacing={2}>
           <Grid item xs={12} md={4}>
             <Typography variant="body2" color="text.secondary">
               Total Requests
             </Typography>
             <Typography variant="h6">
-              {currentUser?.totalRequests || 60}
+              {currentUser?.totalRequests || planDetails.requests || 0}
             </Typography>
           </Grid>
           <Grid item xs={12} md={4}>
@@ -145,13 +198,26 @@ const Profile = () => {
             <Typography variant="body2" color="text.secondary">
               Subscription Plan
             </Typography>
-            <Typography variant="h6">Basic ($10/month)</Typography>
+            <Typography variant="h6">
+              {hasActivePlan
+                ? `${planDetails.name} (₹${planDetails.price})`
+                : "No Active Plan"}
+            </Typography>
+            {hasActivePlan && (
+              <Typography variant="body2" color="text.secondary">
+                {planDetails.validity} validity
+              </Typography>
+            )}
           </Grid>
         </Grid>
 
         <Box sx={{ mt: 3 }}>
-          <Button variant="outlined" color="primary">
-            Upgrade Subscription
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handleUpgradeClick}
+          >
+            {hasActivePlan ? "Upgrade Subscription" : "Get Subscription"}
           </Button>
         </Box>
       </Paper>

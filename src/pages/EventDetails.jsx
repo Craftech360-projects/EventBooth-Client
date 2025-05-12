@@ -8,6 +8,8 @@ import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { DateTimePicker } from "@mui/x-date-pickers/DateTimePicker";
 import { addHours } from "date-fns";
 import { generateUniqueHexId } from "../utils/generateCode";
+import LicenseCertificate from "../components/LicenseCertificate";
+import AuthCode from "../components/AuthCode";
 
 import {
   Box,
@@ -17,9 +19,6 @@ import {
   Grid,
   Chip,
   Divider,
-  List,
-  ListItem,
-  ListItemText,
   Dialog,
   DialogActions,
   DialogContent,
@@ -30,28 +29,30 @@ import {
   MenuItem,
   CircularProgress,
   Alert,
-  Card,
-  CardContent,
-  CardActions,
-  TextField, // Add this import
+  TextField,
+  Table,
+  TableBody,
+  TableCell,
+  TableContainer,
+  TableHead,
+  TableRow,
 } from "@mui/material";
 
 import { format } from "date-fns";
-import {
-  collection,
-  addDoc,
-  query,
-  where,
-  getDocs,
-  Timestamp,
-} from "firebase/firestore";
+import { collection, addDoc, Timestamp } from "firebase/firestore";
 import { db } from "../firebase/config";
 
 const EventDetails = () => {
   const { eventId } = useParams();
+
   const { currentUser } = useAuth();
   const navigate = useNavigate();
   const { services, loading: servicesLoading } = useServices();
+
+  // Initialize serviceRequests as an empty array
+  const [serviceRequests, setServiceRequests] = useState([]);
+  const [serviceRequestsLoading, setServiceRequestsLoading] = useState(true);
+  const [serviceRequestsError, setServiceRequestsError] = useState(null);
 
   const [selectedStartTime, setSelectedStartTime] = useState(new Date());
   const [deviceId] = useState(generateUniqueHexId());
@@ -59,29 +60,31 @@ const EventDetails = () => {
   const [event, setEvent] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [serviceRequests, setServiceRequests] = useState([]);
   const [openRequestModal, setOpenRequestModal] = useState(false);
   const [selectedService, setSelectedService] = useState("");
   const [requestLoading, setRequestLoading] = useState(false);
+  const [openAuthCodeModal, setOpenAuthCodeModal] = useState(false);
+  const [openLicenseModal, setOpenLicenseModal] = useState(false);
+  const [selectedServiceRequest, setSelectedServiceRequest] = useState(null);
+
+  // Define the missing handler functions
+  const handleGetCode = (request) => {
+    setSelectedServiceRequest(request);
+    setOpenAuthCodeModal(true);
+  };
+
+  const handleGetCertificate = (request) => {
+    setSelectedServiceRequest(request);
+    setOpenLicenseModal(true);
+  };
 
   useEffect(() => {
     const fetchEventDetails = async () => {
       try {
         setLoading(true);
         const { data } = await apiService.events.getById(eventId);
-        setEvent(data);
 
-        // Fetch service requests for this event
-        const requestsQuery = query(
-          collection(db, "serviceRequests"),
-          where("eventId", "==", eventId)
-        );
-        const requestsSnapshot = await getDocs(requestsQuery);
-        const requestsData = requestsSnapshot.docs.map((doc) => ({
-          id: doc.id,
-          ...doc.data(),
-        }));
-        setServiceRequests(requestsData);
+        setEvent(data);
       } catch (err) {
         console.error("Error fetching event details:", err);
         setError("Failed to load event details. Please try again later.");
@@ -93,6 +96,42 @@ const EventDetails = () => {
     if (eventId) {
       fetchEventDetails();
     }
+  }, [eventId]);
+
+  // Add a separate effect for fetching service requests
+  useEffect(() => {
+    const fetchServiceRequests = async () => {
+      if (!eventId) return;
+
+      try {
+        setServiceRequestsLoading(true);
+        const response = await apiService.serviceRequests.getByEventId(eventId);
+        console.log("Service Requests Response:", response);
+
+        // Check if response.data exists and is properly structured
+        if (response && response.data) {
+          // If data is directly an array, use it; otherwise check if it has a data property
+          const requestsData = Array.isArray(response.data)
+            ? response.data
+            : response.data.data || [];
+
+          console.log("Processed Service Requests:", requestsData);
+          setServiceRequests(requestsData);
+        } else {
+          console.error("Invalid response format:", response);
+          setServiceRequests([]);
+        }
+      } catch (err) {
+        console.error("Error fetching service requests:", err);
+        setServiceRequestsError("Failed to load service requests");
+        // Ensure serviceRequests is an array even on error
+        setServiceRequests([]);
+      } finally {
+        setServiceRequestsLoading(false);
+      }
+    };
+
+    fetchServiceRequests();
   }, [eventId]);
 
   const parseDate = (dateString) => {
@@ -114,7 +153,6 @@ const EventDetails = () => {
     }
   };
 
-  // Update the handleRequestService function
   const handleRequestService = async () => {
     if (!selectedService) return;
 
@@ -133,7 +171,7 @@ const EventDetails = () => {
         userId: currentUser.uid,
         serviceId: selectedService,
         serviceName: serviceDetails.name,
-        status: "PENDING",
+        status: "ACCEPTED",
         startDateTime,
         endDateTime,
         deviceId, // Use the auto-generated deviceId instead of macId
@@ -145,10 +183,13 @@ const EventDetails = () => {
         requestData
       );
 
-      // Update local state
-      setServiceRequests([
-        ...serviceRequests,
-        { id: docRef.id, ...requestData },
+      // Add the new request to the local state
+      setServiceRequests((prev) => [
+        ...prev,
+        {
+          id: docRef.id,
+          ...requestData,
+        },
       ]);
 
       // Close modal and reset selection
@@ -191,7 +232,7 @@ const EventDetails = () => {
     <Box>
       <Box sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}>
         <Box>
-          <Typography variant="h4" component="h1">
+          <Typography variant="h5" component="h5">
             {event.name}
           </Typography>
         </Box>
@@ -204,16 +245,17 @@ const EventDetails = () => {
         </Button>
       </Box>
 
-      <Grid container spacing={3}>
+      <Grid container spacing={0}>
         <Grid item xs={12} md={8}>
-          <Paper sx={{ p: 3, mb: 3 }}>
+          {/* <Paper sx={{ p: 3, mb: 3 }}>
             <Typography variant="h6" gutterBottom>
               Event Details
             </Typography>
             <Divider sx={{ mb: 2 }} />
-          </Paper>
+          </Paper> */}
 
-          <Paper sx={{ p: 3 }}>
+          {/* Service Requests Section */}
+          <Paper sx={{ p: 3, mt: 4 }}>
             <Box
               sx={{
                 display: "flex",
@@ -235,55 +277,78 @@ const EventDetails = () => {
             </Box>
             <Divider sx={{ mb: 2 }} />
 
-            {serviceRequests.length === 0 ? (
+            {serviceRequestsLoading ? (
+              <Box sx={{ display: "flex", justifyContent: "center", my: 4 }}>
+                <CircularProgress />
+              </Box>
+            ) : serviceRequestsError ? (
+              <Alert severity="error">{serviceRequestsError}</Alert>
+            ) : serviceRequests.length === 0 ? (
               <Typography variant="body1" color="text.secondary">
                 No service requests yet.
               </Typography>
             ) : (
-              <List>
-                {serviceRequests.map((request) => (
-                  <ListItem key={request.id} divider>
-                    <ListItemText
-                      primary={request.serviceName}
-                      secondary={
-                        <>
-                          <Typography component="span" display="block">
-                            Start:{" "}
-                            {format(parseDate(request.startDateTime), "PPp")}
-                          </Typography>
-                          <Typography component="span" display="block">
-                            End: {format(parseDate(request.endDateTime), "PPp")}
-                          </Typography>
-                          <Typography component="span" display="block">
-                            Application ID: {request.deviceId}
-                          </Typography>
-                          <Typography component="span" display="block">
-                            Requested:{" "}
-                            {format(
-                              typeof request.createdAt === "object" &&
-                                request.createdAt.toDate
-                                ? request.createdAt.toDate()
-                                : parseDate(request.createdAt),
-                              "PPp"
-                            )}
-                          </Typography>
-                        </>
-                      }
-                    />
-                    <Chip
-                      label={request.status}
-                      color={
-                        request.status === "APPROVED"
-                          ? "success"
-                          : request.status === "REJECTED"
-                          ? "error"
-                          : "warning"
-                      }
-                      size="small"
-                    />
-                  </ListItem>
-                ))}
-              </List>
+              <TableContainer>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Service</TableCell>
+
+                      <TableCell>Start Date</TableCell>
+                      <TableCell>End Date</TableCell>
+                      <TableCell>Actions</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {serviceRequests.map((request) => (
+                      <TableRow key={request.id}>
+                        <TableCell>{request.serviceName}</TableCell>
+                        {/* <TableCell>
+                          <Chip
+                            label={request.status}
+                            color={
+                              request.status === "ACCEPTED"
+                                ? "success"
+                                : request.status === "PENDING"
+                                ? "warning"
+                                : "error"
+                            }
+                            size="small"
+                          />
+                        </TableCell> */}
+                        <TableCell>
+                          {request.startDateTime &&
+                            format(parseDate(request.startDateTime), "PPp")}
+                        </TableCell>
+                        <TableCell>
+                          {request.endDateTime &&
+                            format(parseDate(request.endDateTime), "PPp")}
+                        </TableCell>
+                        <TableCell>
+                          {request.status === "ACCEPTED" && (
+                            <Box sx={{ display: "flex", gap: 1 }}>
+                              <Button
+                                variant="outlined"
+                                size="small"
+                                onClick={() => handleGetCode(request)}
+                              >
+                                Get Code
+                              </Button>
+                              <Button
+                                variant="outlined"
+                                size="small"
+                                onClick={() => handleGetCertificate(request)}
+                              >
+                                Download License Key
+                              </Button>
+                            </Box>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
             )}
           </Paper>
         </Grid>
@@ -322,17 +387,6 @@ const EventDetails = () => {
               />
             </LocalizationProvider>
           </Box>
-
-          <TextField
-            fullWidth
-            margin="normal"
-            label="Device ID"
-            value={deviceId}
-            InputProps={{
-              readOnly: true,
-            }}
-            helperText="Auto-generated unique device identifier"
-          />
         </DialogContent>
 
         <DialogActions>
@@ -346,6 +400,36 @@ const EventDetails = () => {
             {requestLoading ? "Requesting..." : "Request"}
           </Button>
         </DialogActions>
+      </Dialog>
+
+      {/* Auth Code Modal */}
+      <Dialog
+        open={openAuthCodeModal}
+        onClose={() => setOpenAuthCodeModal(false)}
+        maxWidth="sm"
+        fullWidth
+      >
+        <DialogContent>
+          <AuthCode
+            serviceRequest={selectedServiceRequest}
+            onClose={() => setOpenAuthCodeModal(false)}
+          />
+        </DialogContent>
+      </Dialog>
+
+      {/* License Certificate Modal */}
+      <Dialog
+        open={openLicenseModal}
+        onClose={() => setOpenLicenseModal(false)}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogContent>
+          <LicenseCertificate
+            serviceRequest={selectedServiceRequest}
+            onClose={() => setOpenLicenseModal(false)}
+          />
+        </DialogContent>
       </Dialog>
     </Box>
   );

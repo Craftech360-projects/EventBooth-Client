@@ -25,7 +25,7 @@ const plans = [
   {
     id: "silver",
     name: "Silver",
-    price: 200,
+    price: 299,
     requests: 60,
     color: "#A9A9A9",
     features: ["60 Service Requests", "Basic Support", "30-day validity"],
@@ -33,7 +33,7 @@ const plans = [
   {
     id: "gold",
     name: "Gold",
-    price: 100,
+    price: 499,
     requests: 80,
     color: "#FFD700",
     features: ["80 Service Requests", "Priority Support", "60-day validity"],
@@ -41,7 +41,7 @@ const plans = [
   {
     id: "platinum",
     name: "Platinum",
-    price: 300,
+    price: 699,
     requests: 100,
     color: "#E5E4E2",
     features: ["100 Service Requests", "Premium Support", "90-day validity"],

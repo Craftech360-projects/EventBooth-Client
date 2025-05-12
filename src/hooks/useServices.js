@@ -10,7 +10,7 @@ const useServices = () => {
     const fetchServices = async () => {
       try {
         setLoading(true);
-        const { data } = await apiService.serviceRequests.getServices();
+        const { data } = await apiService.serviceRequests.getAll();
         setServices(data.data || []); // Access the data property of the response
       } catch (error) {
         console.error("Error fetching services:", error);
