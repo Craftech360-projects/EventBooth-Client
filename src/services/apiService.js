@@ -3,7 +3,7 @@ import { auth } from "../firebase/config";
 
 // Create axios instance with default config
 const api = axios.create({
-  baseURL: "http://localhost:2321/api",
+  baseURL: "https://squid-app-kkeyi.ondigitalocean.app/api",
   withCredentials: true,
   headers: {
     "Content-Type": "application/json",
