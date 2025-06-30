@@ -1,23 +1,17 @@
 import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
-import useServices from "../hooks/useServices";
 import apiService from "../services/apiService";
 import { LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import { DateTimePicker } from "@mui/x-date-pickers/DateTimePicker";
-import { addHours } from "date-fns";
-import { generateUniqueHexId } from "../utils/generateCode";
 import LicenseCertificate from "../components/LicenseCertificate";
-import AuthCode from "../components/AuthCode";
-
 import {
   Box,
   Typography,
   Button,
   Paper,
   Grid,
-  Chip,
   Divider,
   Dialog,
   DialogActions,
@@ -36,6 +30,13 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  Checkbox,
+  ListItemText,
+  OutlinedInput,
+  RadioGroup,
+  FormControlLabel,
+  Radio,
+  FormLabel,
 } from "@mui/material";
 
 import { format } from "date-fns";
@@ -44,34 +45,32 @@ import { db } from "../firebase/config";
 
 const EventDetails = () => {
   const { eventId } = useParams();
-
   const { currentUser } = useAuth();
   const navigate = useNavigate();
-  const { services, loading: servicesLoading } = useServices();
 
-  // Initialize serviceRequests as an empty array
   const [serviceRequests, setServiceRequests] = useState([]);
   const [serviceRequestsLoading, setServiceRequestsLoading] = useState(true);
   const [serviceRequestsError, setServiceRequestsError] = useState(null);
-
-  const [selectedStartTime, setSelectedStartTime] = useState(new Date());
-  const [deviceId] = useState(generateUniqueHexId());
 
   const [event, setEvent] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [openRequestModal, setOpenRequestModal] = useState(false);
-  const [selectedService, setSelectedService] = useState("");
   const [requestLoading, setRequestLoading] = useState(false);
-  const [openAuthCodeModal, setOpenAuthCodeModal] = useState(false);
   const [openLicenseModal, setOpenLicenseModal] = useState(false);
   const [selectedServiceRequest, setSelectedServiceRequest] = useState(null);
 
-  // Define the missing handler functions
-  const handleGetCode = (request) => {
-    setSelectedServiceRequest(request);
-    setOpenAuthCodeModal(true);
-  };
+  const [photoboothRequest, setPhotoboothRequest] = useState({
+    startDateTime: new Date(),
+    endDateTime: new Date(),
+    themes: [],
+    builds: [],
+    mode: "Online",
+  });
+
+  const themes = ["Stranger Things", "Jurassic Park", "Final Destination"];
+
+  const builds = ["Android", "iOS", "Web", "Windows", "macOS"];
 
   const handleGetCertificate = (request) => {
     setSelectedServiceRequest(request);
@@ -83,11 +82,9 @@ const EventDetails = () => {
       try {
         setLoading(true);
         const { data } = await apiService.events.getById(eventId);
-
         setEvent(data);
       } catch (err) {
-        console.error("Error fetching event details:", err);
-        setError("Failed to load event details. Please try again later.");
+        setError("Failed to load event details.");
       } finally {
         setLoading(false);
       }
@@ -98,7 +95,6 @@ const EventDetails = () => {
     }
   }, [eventId]);
 
-  // Add a separate effect for fetching service requests
   useEffect(() => {
     const fetchServiceRequests = async () => {
       if (!eventId) return;
@@ -106,25 +102,16 @@ const EventDetails = () => {
       try {
         setServiceRequestsLoading(true);
         const response = await apiService.serviceRequests.getByEventId(eventId);
-        console.log("Service Requests Response:", response);
-
-        // Check if response.data exists and is properly structured
         if (response && response.data) {
-          // If data is directly an array, use it; otherwise check if it has a data property
           const requestsData = Array.isArray(response.data)
             ? response.data
             : response.data.data || [];
-
-          console.log("Processed Service Requests:", requestsData);
           setServiceRequests(requestsData);
         } else {
-          console.error("Invalid response format:", response);
           setServiceRequests([]);
         }
       } catch (err) {
-        console.error("Error fetching service requests:", err);
         setServiceRequestsError("Failed to load service requests");
-        // Ensure serviceRequests is an array even on error
         setServiceRequests([]);
       } finally {
         setServiceRequestsLoading(false);
@@ -135,71 +122,26 @@ const EventDetails = () => {
   }, [eventId]);
 
   const parseDate = (dateValue) => {
-    // Return null if the input is falsy (null, undefined, etc.)
-    if (!dateValue) {
-      return null;
-    }
-
-    // Case 1: It's already a Firestore Timestamp object with a toDate method.
-    if (typeof dateValue.toDate === "function") {
-      return dateValue.toDate();
-    }
-
-    // Case 2: It's a serialized Timestamp object from an API.
-    // Check for both `seconds` and `_seconds` for robustness.
-    const seconds = dateValue.seconds || dateValue._seconds;
-    if (typeof seconds === "number") {
-      return new Date(seconds * 1000);
-    }
-
-    // Case 3: It's an ISO string or another format parsable by new Date().
-    if (typeof dateValue === "string" || typeof dateValue === "number") {
-      const d = new Date(dateValue);
-      // Ensure the parsed date is valid.
-      if (!isNaN(d.getTime())) {
-        return d;
-      }
-    }
-
-    // If none of the above conditions are met, return null.
-    return null;
+    if (!dateValue) return null;
+    if (dateValue.toDate) return dateValue.toDate();
+    if (dateValue._seconds) return new Date(dateValue._seconds * 1000);
+    const d = new Date(dateValue);
+    return isNaN(d.getTime()) ? null : d;
   };
 
-  const calculateEndTime = (startTime, plan) => {
-    switch (plan?.toLowerCase()) {
-      case "silver":
-        return addHours(startTime, 72);
-      case "gold":
-        return addHours(startTime, 96);
-      case "platinum":
-        return addHours(startTime, 120);
-      default:
-        return addHours(startTime, 72); // Default to Silver plan
-    }
+  const handleRequestInputChange = (e) => {
+    const { name, value } = e.target;
+    setPhotoboothRequest({ ...photoboothRequest, [name]: value });
   };
 
-  const handleRequestService = async () => {
-    if (!selectedService) return;
-
+  const handleRequestPhotobooth = async () => {
     try {
       setRequestLoading(true);
 
-      // Find the selected service details
-      const serviceDetails = services.find((s) => s.id === selectedService);
-
-      const startDateTime = selectedStartTime;
-      const endDateTime = calculateEndTime(startDateTime, currentUser?.plan);
-
-      // Create service request in Firestore
       const requestData = {
         eventId,
         userId: currentUser.uid,
-        serviceId: selectedService,
-        serviceName: serviceDetails.name,
-        status: "ACCEPTED",
-        startDateTime,
-        endDateTime,
-        deviceId, // Use the auto-generated deviceId instead of macId
+        ...photoboothRequest,
         createdAt: Timestamp.now(),
       };
 
@@ -208,238 +150,209 @@ const EventDetails = () => {
         requestData
       );
 
-      // Add the new request to the local state
-      setServiceRequests((prev) => [
-        ...prev,
-        {
-          id: docRef.id,
-          ...requestData,
-        },
-      ]);
-
-      // Close modal and reset selection
+      setServiceRequests((prev) => [...prev, { id: docRef.id, ...requestData }]);
       setOpenRequestModal(false);
-      setSelectedService("");
-      setSelectedStartTime(new Date());
     } catch (err) {
-      console.error("Error requesting service:", err);
-      setError("Failed to request service. Please try again later.");
+      setError("Failed to request photobooth.");
     } finally {
       setRequestLoading(false);
     }
   };
 
-  if (loading) {
-    return (
-      <Box sx={{ display: "flex", justifyContent: "center", my: 4 }}>
-        <CircularProgress />
-      </Box>
-    );
-  }
-
-  if (error) {
-    return (
-      <Alert severity="error" sx={{ mt: 2 }}>
-        {error}
-      </Alert>
-    );
-  }
-
-  if (!event) {
-    return (
-      <Alert severity="warning" sx={{ mt: 2 }}>
-        Event not found.
-      </Alert>
-    );
-  }
+  if (loading) return <CircularProgress />;
+  if (error) return <Alert severity="error">{error}</Alert>;
+  if (!event) return <Alert severity="warning">Event not found.</Alert>;
 
   return (
     <Box>
       <Box sx={{ display: "flex", justifyContent: "space-between", mb: 3 }}>
-        <Box>
-          <Typography variant="h5" component="h5">
-            {event.name}
-          </Typography>
-        </Box>
-        <Button
-          variant="outlined"
-          color="primary"
-          onClick={() => navigate("/events")}
-        >
+        <Typography variant="h5">{event.name}</Typography>
+        <Button variant="outlined" onClick={() => navigate("/events")}>
           Back to Events
         </Button>
       </Box>
 
-      <Grid container spacing={0}>
-        <Grid item xs={12} md={8}>
-          {/* <Paper sx={{ p: 3, mb: 3 }}>
-            <Typography variant="h6" gutterBottom>
-              Event Details
-            </Typography>
-            <Divider sx={{ mb: 2 }} />
-          </Paper> */}
+      <Paper sx={{ p: 3, mt: 4 }}>
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            mb: 2,
+          }}
+        >
+          <Typography variant="h6">Photobooth Requests</Typography>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={() => setOpenRequestModal(true)}
+          >
+            Request Photobooth
+          </Button>
+        </Box>
+        <Divider sx={{ mb: 2 }} />
 
-          {/* Service Requests Section */}
-          <Paper sx={{ p: 3, mt: 4 }}>
-            <Box
-              sx={{
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
-                mb: 2,
-              }}
-            >
-              <Typography variant="h6" sx={{ mr: 3 }}>
-                Service Requests
-              </Typography>
-              <Button
-                variant="contained"
-                color="primary"
-                onClick={() => setOpenRequestModal(true)}
-              >
-                Request Service
-              </Button>
-            </Box>
-            <Divider sx={{ mb: 2 }} />
+        {serviceRequestsLoading ? (
+          <CircularProgress />
+        ) : serviceRequestsError ? (
+          <Alert severity="error">{serviceRequestsError}</Alert>
+        ) : serviceRequests.length === 0 ? (
+          <Typography>No photobooth requests yet.</Typography>
+        ) : (
+          <TableContainer>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Start Date</TableCell>
+                  <TableCell>End Date</TableCell>
+                  <TableCell>Actions</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {serviceRequests.map((request) => (
+                  <TableRow key={request.id}>
+                    <TableCell>
+                      {format(
+                        parseDate(request.startDateTime),
+                        "MMM d, yyyy h:mm a"
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {format(
+                        parseDate(request.endDateTime),
+                        "MMM d, yyyy h:mm a"
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={() => handleGetCertificate(request)}
+                      >
+                        Download License Certificate
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
+      </Paper>
 
-            {serviceRequestsLoading ? (
-              <Box sx={{ display: "flex", justifyContent: "center", my: 4 }}>
-                <CircularProgress />
-              </Box>
-            ) : serviceRequestsError ? (
-              <Alert severity="error">{serviceRequestsError}</Alert>
-            ) : serviceRequests.length === 0 ? (
-              <Typography variant="body1" color="text.secondary">
-                No service requests yet.
-              </Typography>
-            ) : (
-              <TableContainer>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Service</TableCell>
-
-                      <TableCell>Start Date</TableCell>
-                      <TableCell>End Date</TableCell>
-                      <TableCell>Actions</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {[...serviceRequests]
-                      .sort((a, b) => {
-                        const dateA = parseDate(a.createdAt);
-                        const dateB = parseDate(b.createdAt);
-                        return (
-                          (dateB?.getTime() || 0) - (dateA?.getTime() || 0)
-                        );
-                      })
-                      .map((request) => (
-                        <TableRow key={request.id}>
-                          <TableCell>{request.serviceName}</TableCell>
-                          <TableCell>
-                            {parseDate(request.startDateTime)
-                              ? format(parseDate(request.startDateTime), "PPp")
-                              : "N/A"}
-                          </TableCell>
-                          <TableCell>
-                            {parseDate(request.endDateTime)
-                              ? format(parseDate(request.endDateTime), "PPp")
-                              : "N/A"}
-                          </TableCell>
-                          <TableCell>
-                            {request.status === "ACCEPTED" && (
-                              <Box sx={{ display: "flex", gap: 1 }}>
-                                <Button
-                                  variant="outlined"
-                                  size="small"
-                                  onClick={() => handleGetCode(request)}
-                                >
-                                  Get Code
-                                </Button>
-                                <Button
-                                  variant="outlined"
-                                  size="small"
-                                  onClick={() => handleGetCertificate(request)}
-                                >
-                                  Download License Key
-                                </Button>
-                              </Box>
-                            )}
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            )}
-          </Paper>
-        </Grid>
-      </Grid>
-
-      {/* Request Service Modal */}
       <Dialog
         open={openRequestModal}
         onClose={() => setOpenRequestModal(false)}
       >
-        <DialogTitle>Request Service</DialogTitle>
-        <DialogContent sx={{ minWidth: 400 }}>
+        <DialogTitle>Request Photobooth</DialogTitle>
+        <DialogContent>
+          <LocalizationProvider dateAdapter={AdapterDateFns}>
+            <DateTimePicker
+              label="Start Date & Time"
+              value={photoboothRequest.startDateTime}
+              onChange={(newValue) =>
+                setPhotoboothRequest({
+                  ...photoboothRequest,
+                  startDateTime: newValue,
+                })
+              }
+              renderInput={(params) => <TextField {...params} fullWidth />}
+              sx={{ mt: 2 }}
+            />
+            <DateTimePicker
+              label="End Date & Time"
+              value={photoboothRequest.endDateTime}
+              onChange={(newValue) =>
+                setPhotoboothRequest({
+                  ...photoboothRequest,
+                  endDateTime: newValue,
+                })
+              }
+              renderInput={(params) => <TextField {...params} fullWidth />}
+              sx={{ mt: 2 }}
+            />
+          </LocalizationProvider>
           <FormControl fullWidth sx={{ mt: 2 }}>
-            <InputLabel id="service-select-label">Select Service</InputLabel>
+            <InputLabel>Photobooth Themes</InputLabel>
             <Select
-              labelId="service-select-label"
-              value={selectedService}
-              label="Select Service"
-              onChange={(e) => setSelectedService(e.target.value)}
+              multiple
+              value={photoboothRequest.themes}
+              onChange={(e) =>
+                setPhotoboothRequest({
+                  ...photoboothRequest,
+                  themes: e.target.value,
+                })
+              }
+              input={<OutlinedInput label="Photobooth Themes" />}
+              renderValue={(selected) => selected.join(", ")}
             >
-              {services.map((service) => (
-                <MenuItem key={service.id} value={service.id}>
-                  {service.name}
+              {themes.map((theme) => (
+                <MenuItem key={theme} value={theme}>
+                  <Checkbox
+                    checked={photoboothRequest.themes.indexOf(theme) > -1}
+                  />
+                  <ListItemText primary={theme} />
                 </MenuItem>
               ))}
             </Select>
           </FormControl>
-
-          <Box sx={{ mt: 3 }}>
-            <LocalizationProvider dateAdapter={AdapterDateFns}>
-              <DateTimePicker
-                label="Start Date & Time"
-                value={selectedStartTime}
-                onChange={(newValue) => setSelectedStartTime(newValue)}
-                slotProps={{ textField: { fullWidth: true } }}
+          <FormControl fullWidth sx={{ mt: 2 }}>
+            <InputLabel>Builds</InputLabel>
+            <Select
+              multiple
+              value={photoboothRequest.builds}
+              onChange={(e) =>
+                setPhotoboothRequest({
+                  ...photoboothRequest,
+                  builds: e.target.value,
+                })
+              }
+              input={<OutlinedInput label="Builds" />}
+              renderValue={(selected) => selected.join(", ")}
+            >
+              {builds.map((build) => (
+                <MenuItem key={build} value={build}>
+                  <Checkbox
+                    checked={photoboothRequest.builds.indexOf(build) > -1}
+                  />
+                  <ListItemText primary={build} />
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <FormControl component="fieldset" sx={{ mt: 2 }}>
+            <FormLabel component="legend">Photobooth Mode</FormLabel>
+            <RadioGroup
+              row
+              name="mode"
+              value={photoboothRequest.mode}
+              onChange={handleRequestInputChange}
+            >
+              <FormControlLabel
+                value="Online"
+                control={<Radio />}
+                label="Online"
               />
-            </LocalizationProvider>
-          </Box>
+              <FormControlLabel
+                value="Offline"
+                control={<Radio />}
+                label="Offline"
+              />
+            </RadioGroup>
+          </FormControl>
         </DialogContent>
-
         <DialogActions>
           <Button onClick={() => setOpenRequestModal(false)}>Cancel</Button>
           <Button
-            onClick={handleRequestService}
+            onClick={handleRequestPhotobooth}
             variant="contained"
-            color="primary"
-            disabled={!selectedService || requestLoading}
+            disabled={requestLoading}
           >
-            {requestLoading ? "Requesting..." : "Request"}
+            {requestLoading ? "Submitting..." : "Submit"}
           </Button>
         </DialogActions>
       </Dialog>
 
-      {/* Auth Code Modal */}
-      <Dialog
-        open={openAuthCodeModal}
-        onClose={() => setOpenAuthCodeModal(false)}
-        maxWidth="sm"
-        fullWidth
-      >
-        <DialogContent>
-          <AuthCode
-            serviceRequest={selectedServiceRequest}
-            onClose={() => setOpenAuthCodeModal(false)}
-          />
-        </DialogContent>
-      </Dialog>
-
-      {/* License Certificate Modal */}
       <Dialog
         open={openLicenseModal}
         onClose={() => setOpenLicenseModal(false)}
@@ -447,10 +360,7 @@ const EventDetails = () => {
         fullWidth
       >
         <DialogContent>
-          <LicenseCertificate
-            serviceRequest={selectedServiceRequest}
-            onClose={() => setOpenLicenseModal(false)}
-          />
+          <LicenseCertificate serviceRequest={selectedServiceRequest} />
         </DialogContent>
       </Dialog>
     </Box>
