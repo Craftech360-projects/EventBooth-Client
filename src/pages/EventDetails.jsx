@@ -134,22 +134,47 @@ const EventDetails = () => {
     fetchServiceRequests();
   }, [eventId]);
 
-  const parseDate = (dateString) => {
-    if (!dateString) return new Date();
-    const date = new Date(dateString);
-    return isNaN(date.getTime()) ? new Date() : date;
+  const parseDate = (dateValue) => {
+    // Return null if the input is falsy (null, undefined, etc.)
+    if (!dateValue) {
+      return null;
+    }
+
+    // Case 1: It's already a Firestore Timestamp object with a toDate method.
+    if (typeof dateValue.toDate === "function") {
+      return dateValue.toDate();
+    }
+
+    // Case 2: It's a serialized Timestamp object from an API.
+    // Check for both `seconds` and `_seconds` for robustness.
+    const seconds = dateValue.seconds || dateValue._seconds;
+    if (typeof seconds === "number") {
+      return new Date(seconds * 1000);
+    }
+
+    // Case 3: It's an ISO string or another format parsable by new Date().
+    if (typeof dateValue === "string" || typeof dateValue === "number") {
+      const d = new Date(dateValue);
+      // Ensure the parsed date is valid.
+      if (!isNaN(d.getTime())) {
+        return d;
+      }
+    }
+
+    // If none of the above conditions are met, return null.
+    return null;
   };
 
   const calculateEndTime = (startTime, plan) => {
     switch (plan?.toLowerCase()) {
       case "silver":
-        return addHours(startTime, 24);
-      case "gold":
-        return addHours(startTime, 48);
-      case "platinum":
         return addHours(startTime, 72);
+      case "gold":
+        return addHours(startTime, 96);
+      case "platinum":
+        return addHours(startTime, 120);
       default:
-        return addHours(startTime, 24); // Default to Silver plan
+        return addHours(startTime, 72); // Default to Silver plan
     }
   };
 
@@ -300,52 +325,49 @@ const EventDetails = () => {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {serviceRequests.map((request) => (
-                      <TableRow key={request.id}>
-                        <TableCell>{request.serviceName}</TableCell>
-                        {/* <TableCell>
-                          <Chip
-                            label={request.status}
-                            color={
-                              request.status === "ACCEPTED"
-                                ? "success"
-                                : request.status === "PENDING"
-                                ? "warning"
-                                : "error"
-                            }
-                            size="small"
-                          />
-                        </TableCell> */}
-                        <TableCell>
-                          {request.startDateTime &&
-                            format(parseDate(request.startDateTime), "PPp")}
-                        </TableCell>
-                        <TableCell>
-                          {request.endDateTime &&
-                            format(parseDate(request.endDateTime), "PPp")}
-                        </TableCell>
-                        <TableCell>
-                          {request.status === "ACCEPTED" && (
-                            <Box sx={{ display: "flex", gap: 1 }}>
-                              <Button
-                                variant="outlined"
-                                size="small"
-                                onClick={() => handleGetCode(request)}
-                              >
-                                Get Code
-                              </Button>
-                              <Button
-                                variant="outlined"
-                                size="small"
-                                onClick={() => handleGetCertificate(request)}
-                              >
-                                Download License Key
-                              </Button>
-                            </Box>
-                          )}
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {[...serviceRequests]
+                      .sort((a, b) => {
+                        const dateA = parseDate(a.createdAt);
+                        const dateB = parseDate(b.createdAt);
+                        return (
+                          (dateB?.getTime() || 0) - (dateA?.getTime() || 0)
+                        );
+                      })
+                      .map((request) => (
+                        <TableRow key={request.id}>
+                          <TableCell>{request.serviceName}</TableCell>
+                          <TableCell>
+                            {parseDate(request.startDateTime)
+                              ? format(parseDate(request.startDateTime), "PPp")
+                              : "N/A"}
+                          </TableCell>
+                          <TableCell>
+                            {parseDate(request.endDateTime)
+                              ? format(parseDate(request.endDateTime), "PPp")
+                              : "N/A"}
+                          </TableCell>
+                          <TableCell>
+                            {request.status === "ACCEPTED" && (
+                              <Box sx={{ display: "flex", gap: 1 }}>
+                                <Button
+                                  variant="outlined"
+                                  size="small"
+                                  onClick={() => handleGetCode(request)}
+                                >
+                                  Get Code
+                                </Button>
+                                <Button
+                                  variant="outlined"
+                                  size="small"
+                                  onClick={() => handleGetCertificate(request)}
+                                >
+                                  Download License Key
+                                </Button>
+                              </Box>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
                   </TableBody>
                 </Table>
               </TableContainer>

@@ -5,7 +5,7 @@ import { saveAs } from "file-saver";
 import CryptoJS from "crypto-js";
 
 // This secret key should be stored in environment variables in production
-const JWT_SECRET_KEY = "photobooth_license_secret_key_2025";
+const JWT_SECRET_KEY = "b7f8e2d1c9a4f6e3b2d7c8a9e1f4b6d2c3a8e7f1b5d9c2a6f3e8b1d4c7a2f9e5";
 
 // Generate a unique security key
 export const generateSecurityKey = () => {
